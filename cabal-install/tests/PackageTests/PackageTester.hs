@@ -29,6 +29,7 @@ module PackageTests.PackageTester
     , cabal_freeze
     , cabal_install
     , cabal_sandbox
+    , cabal
     , run
 
     -- * Test helpers

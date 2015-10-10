@@ -38,6 +38,7 @@ import PackageTests.PackageTester ( TestsPaths(..)
 -- Modules containing the tests.
 import qualified PackageTests.Exec.Check
 import qualified PackageTests.Freeze.Check
+import qualified PackageTests.Manpage.Check
 import qualified PackageTests.MultipleSource.Check
 
 -- List of tests to run. Each test will be called with the path to the
@@ -46,6 +47,7 @@ tests :: PackageTests.PackageTester.TestsPaths -> TestTree
 tests paths = testGroup "Package Tests" $
     [ testGroup "Freeze"         $ PackageTests.Freeze.Check.tests         paths
     , testGroup "Exec"           $ PackageTests.Exec.Check.tests           paths
+    , testGroup "Manpage"        $ PackageTests.Manpage.Check.tests        paths
     , testGroup "MultipleSource" $ PackageTests.MultipleSource.Check.tests paths
     ]
 
