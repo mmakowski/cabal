@@ -42,6 +42,7 @@ import Distribution.Client.Setup
          , ExecFlags(..), execCommand
          , UserConfigFlags(..), userConfigCommand
          , reportCommand
+         , manpageCommand
          )
 import Distribution.Simple.Setup
          ( HaddockFlags(..), haddockCommand, defaultHaddockFlags
@@ -270,6 +271,8 @@ mainWorker args = topHandler $
        win32SelfUpgradeCommand`commandAddAction` win32SelfUpgradeAction
       ,hiddenCommand $
        actAsSetupCommand`commandAddAction` actAsSetupAction
+      ,hiddenCommand $
+       manpageCommand         `commandAddAction` manpageAction
       ]
 
 wrapperAction :: Monoid flags
@@ -1194,3 +1197,9 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
     Make      -> Make.defaultMainArgs args
     Custom               -> error "actAsSetupAction Custom"
     (UnknownBuildType _) -> error "actAsSetupAction UnknownBuildType"
+
+manpageAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
+manpageAction _ extraArgs _ = do
+  unless (null extraArgs) $
+    die $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
+  putStrLn "TODO"
