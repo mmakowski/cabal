@@ -231,61 +231,60 @@ mainWorker args = topHandler $
 
     commands = map commandFromSpec commandSpecs
     commandSpecs =
-      [ RegularCommand installCommand installAction
-      , RegularCommand updateCommand updateAction
-      , RegularCommand listCommand listAction
-      , RegularCommand infoCommand infoAction
-      , RegularCommand fetchCommand fetchAction
-      , RegularCommand freezeCommand freezeAction
-      , RegularCommand getCommand getAction
-      , HiddenCommand  unpackCommand unpackAction
-      , RegularCommand checkCommand checkAction
-      , RegularCommand sdistCommand sdistAction
-      , RegularCommand uploadCommand uploadAction
-      , RegularCommand reportCommand reportAction
-      , RegularCommand runCommand runAction
-      , RegularCommand initCommand initAction
-      , RegularCommand configureExCommand configureAction
-      , RegularCommand buildCommand buildAction
-      , RegularCommand replCommand replAction
-      , RegularCommand sandboxCommand sandboxAction
-      , RegularCommand haddockCommand haddockAction
-      , RegularCommand execCommand execAction
-      , RegularCommand userConfigCommand userConfigAction
-      , RegularCommand cleanCommand cleanAction
-      , WrapperCommand copyCommand copyVerbosity copyDistPref
-      , WrapperCommand hscolourCommand hscolourVerbosity hscolourDistPref
-      , WrapperCommand registerCommand regVerbosity regDistPref
-      , RegularCommand testCommand testAction
-      , RegularCommand benchmarkCommand benchmarkAction
-      , HiddenCommand  uninstallCommand uninstallAction
-      , HiddenCommand  formatCommand formatAction
-      , HiddenCommand  upgradeCommand upgradeAction
-      , HiddenCommand  win32SelfUpgradeCommand win32SelfUpgradeAction
-      , HiddenCommand  actAsSetupCommand actAsSetupAction
-      , HiddenCommand  manpageCommand (manpageAction commandSpecs)
+      [ regularCmd installCommand installAction
+      , regularCmd updateCommand updateAction
+      , regularCmd listCommand listAction
+      , regularCmd infoCommand infoAction
+      , regularCmd fetchCommand fetchAction
+      , regularCmd freezeCommand freezeAction
+      , regularCmd getCommand getAction
+      , hiddenCmd  unpackCommand unpackAction
+      , regularCmd checkCommand checkAction
+      , regularCmd sdistCommand sdistAction
+      , regularCmd uploadCommand uploadAction
+      , regularCmd reportCommand reportAction
+      , regularCmd runCommand runAction
+      , regularCmd initCommand initAction
+      , regularCmd configureExCommand configureAction
+      , regularCmd buildCommand buildAction
+      , regularCmd replCommand replAction
+      , regularCmd sandboxCommand sandboxAction
+      , regularCmd haddockCommand haddockAction
+      , regularCmd execCommand execAction
+      , regularCmd userConfigCommand userConfigAction
+      , regularCmd cleanCommand cleanAction
+      , wrapperCmd copyCommand copyVerbosity copyDistPref
+      , wrapperCmd hscolourCommand hscolourVerbosity hscolourDistPref
+      , wrapperCmd registerCommand regVerbosity regDistPref
+      , regularCmd testCommand testAction
+      , regularCmd benchmarkCommand benchmarkAction
+      , hiddenCmd  uninstallCommand uninstallAction
+      , hiddenCmd  formatCommand formatAction
+      , hiddenCmd  upgradeCommand upgradeAction
+      , hiddenCmd  win32SelfUpgradeCommand win32SelfUpgradeAction
+      , hiddenCmd  actAsSetupCommand actAsSetupAction
+      , hiddenCmd  manpageCommand (manpageAction commandSpecs)
       ]
 
 type Action = GlobalFlags -> IO ()
 
-data CommandSpec = forall flags. RegularCommand (CommandUI flags) 
-                                                (flags -> [String] -> Action)
-                 | forall flags. HiddenCommand (CommandUI flags) 
-                                               (flags -> [String] -> Action)
-                 | forall flags. Monoid flags => WrapperCommand (CommandUI flags) 
-                                                                (flags -> Flag Verbosity) 
-                                                                (flags -> Flag String) -- TODO: better name
+data CommandSpec = forall flags. CommandSpec (CommandUI flags) (CommandUI flags -> Command Action)
+
+regularCmd :: CommandUI flags -> (flags -> [String] -> Action) -> CommandSpec
+regularCmd ui action = CommandSpec ui ((flip commandAddAction) action)
+hiddenCmd :: CommandUI flags -> (flags -> [String] -> Action) -> CommandSpec
+hiddenCmd ui action = CommandSpec ui (\ui' -> hiddenCommand (commandAddAction ui' action))
+wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Flag Verbosity) -> (flags -> Flag String) -> CommandSpec-- TODO: better name
+wrapperCmd ui verbosity distPref = CommandSpec ui (\ui' -> wrapperAction ui' verbosity distPref)
 
 commandFromSpec :: CommandSpec -> Command Action
-commandFromSpec (RegularCommand ui action) = commandAddAction ui action
-commandFromSpec (HiddenCommand ui action) = hiddenCommand (commandAddAction ui action)
-commandFromSpec (WrapperCommand ui verbosity distPref) = wrapperAction ui verbosity distPref
+commandFromSpec (CommandSpec ui action) = action ui
 
 wrapperAction :: Monoid flags
               => CommandUI flags
               -> (flags -> Flag Verbosity)
               -> (flags -> Flag String)
-              -> Command (Action)
+              -> Command Action
 wrapperAction command verbosityFlag distPrefFlag =
   commandAddAction command
     { commandDefaultFlags = mempty } $ \flags extraArgs globalFlags -> do
