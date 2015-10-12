@@ -171,6 +171,9 @@ import Control.Applicative      (pure, (<$>))
 #endif
 import Control.Monad            (when, unless)
 
+-- TODO: manpage imports
+import Data.Char (toUpper)
+
 -- | Entry point
 --
 main :: IO ()
@@ -266,19 +269,23 @@ mainWorker args = topHandler $
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
       ]
 
+-- TODO: move Action and CommandSpec to a separate module so that Manpage can depend on it
+
 type Action = GlobalFlags -> IO ()
 
-data CommandSpec = forall flags. CommandSpec (CommandUI flags) (CommandUI flags -> Command Action)
-
-regularCmd :: CommandUI flags -> (flags -> [String] -> Action) -> CommandSpec
-regularCmd ui action = CommandSpec ui ((flip commandAddAction) action)
-hiddenCmd :: CommandUI flags -> (flags -> [String] -> Action) -> CommandSpec
-hiddenCmd ui action = CommandSpec ui (\ui' -> hiddenCommand (commandAddAction ui' action))
-wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Flag Verbosity) -> (flags -> Flag String) -> CommandSpec-- TODO: better name
-wrapperCmd ui verbosity distPref = CommandSpec ui (\ui' -> wrapperAction ui' verbosity distPref)
+data CommandVisibility = Visible | Hidden
+data CommandSpec = forall flags. CommandSpec (CommandUI flags) (CommandUI flags -> Command Action) CommandVisibility
 
 commandFromSpec :: CommandSpec -> Command Action
-commandFromSpec (CommandSpec ui action) = action ui
+commandFromSpec (CommandSpec ui action _) = action ui
+
+regularCmd :: CommandUI flags -> (flags -> [String] -> Action) -> CommandSpec
+regularCmd ui action = CommandSpec ui ((flip commandAddAction) action) Visible
+hiddenCmd :: CommandUI flags -> (flags -> [String] -> Action) -> CommandSpec
+hiddenCmd ui action = CommandSpec ui (\ui' -> hiddenCommand (commandAddAction ui' action)) Hidden
+wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Flag Verbosity) -> (flags -> Flag String) -> CommandSpec-- TODO: better name
+wrapperCmd ui verbosity distPref = CommandSpec ui (\ui' -> wrapperAction ui' verbosity distPref) Visible
+
 
 wrapperAction :: Monoid flags
               => CommandUI flags
@@ -1202,8 +1209,35 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
     Custom               -> error "actAsSetupAction Custom"
     (UnknownBuildType _) -> error "actAsSetupAction UnknownBuildType"
 
+-- TODO: move parts of this to a separate module
+
 manpageAction :: [CommandSpec] -> Flag Verbosity -> [String] -> Action
-manpageAction _ _ extraArgs _ = do
+manpageAction commands _ extraArgs _ = do
   unless (null extraArgs) $
     die $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
-  putStrLn "TODO"
+  pname <- getProgName
+  putStrLn (manpage pname commands)
+
+manpage :: String -> [CommandSpec] -> String
+manpage pname commands = unlines $
+  [ ".TH " ++ map toUpper pname ++ " 1"
+  , ".SH NAME"
+  , pname ++ " \\- a system for building and packaging Haskell libraries and programs"
+  , ".SH SYNOPSIS"
+  , ".B " ++ pname
+  , ".I command"
+  , ".RI < arguments |[ options ]>..."
+  , ""
+  , "Where the"
+  , ".I commands"
+  , "are"
+  , ""
+  ] ++
+  concatMap commandSynopsisLines commands
+  where
+    commandSynopsisLines (CommandSpec ui _ Visible) =
+      [ ".B " ++ pname ++ " " ++ (commandName ui)
+      , ".R - " ++ commandSynopsis ui
+      , ".br"
+      ]
+    commandSynopsisLines (CommandSpec _ _ Hidden) = []
