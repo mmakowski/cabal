@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ExistentialQuantification #-}
+{-# LANGUAGE CPP #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -109,6 +109,10 @@ import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
 import Distribution.Client.Types              (Password (..))
 import Distribution.Client.Init               (initCabal)
+import Distribution.Client.Manpage            (CommandVisibility(..)
+                                              ,CommandSpec(..)
+                                              ,commandFromSpec
+                                              ,manpage)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Distribution.Client.Utils              (determineNumJobs
 #if defined(mingw32_HOST_OS)
@@ -170,9 +174,6 @@ import Data.Monoid              (Monoid(..))
 import Control.Applicative      (pure, (<$>))
 #endif
 import Control.Monad            (when, unless)
-
--- TODO: manpage imports
-import Data.Char (toUpper)
 
 -- | Entry point
 --
@@ -269,21 +270,13 @@ mainWorker args = topHandler $
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
       ]
 
--- TODO: move Action and CommandSpec to a separate module so that Manpage can depend on it
-
 type Action = GlobalFlags -> IO ()
 
-data CommandVisibility = Visible | Hidden
-data CommandSpec = forall flags. CommandSpec (CommandUI flags) (CommandUI flags -> Command Action) CommandVisibility
-
-commandFromSpec :: CommandSpec -> Command Action
-commandFromSpec (CommandSpec ui action _) = action ui
-
-regularCmd :: CommandUI flags -> (flags -> [String] -> Action) -> CommandSpec
+regularCmd :: CommandUI flags -> (flags -> [String] -> action) -> CommandSpec action
 regularCmd ui action = CommandSpec ui ((flip commandAddAction) action) Visible
-hiddenCmd :: CommandUI flags -> (flags -> [String] -> Action) -> CommandSpec
+hiddenCmd :: CommandUI flags -> (flags -> [String] -> action) -> CommandSpec action
 hiddenCmd ui action = CommandSpec ui (\ui' -> hiddenCommand (commandAddAction ui' action)) Hidden
-wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Flag Verbosity) -> (flags -> Flag String) -> CommandSpec-- TODO: better name
+wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Flag Verbosity) -> (flags -> Flag String) -> CommandSpec Action -- TODO MM: better name
 wrapperCmd ui verbosity distPref = CommandSpec ui (\ui' -> wrapperAction ui' verbosity distPref) Visible
 
 
@@ -1209,62 +1202,9 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
     Custom               -> error "actAsSetupAction Custom"
     (UnknownBuildType _) -> error "actAsSetupAction UnknownBuildType"
 
--- TODO: move parts of this to a separate module
-
-manpageAction :: [CommandSpec] -> Flag Verbosity -> [String] -> Action
+manpageAction :: [CommandSpec action] -> Flag Verbosity -> [String] -> Action
 manpageAction commands _ extraArgs _ = do
   unless (null extraArgs) $
     die $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
   pname <- getProgName
   putStrLn (manpage pname commands)
-
-manpage :: String -> [CommandSpec] -> String
-manpage pname commands = unlines $
-  [ ".TH " ++ map toUpper pname ++ " 1"
-  , ".SH NAME"
-  , pname ++ " \\- a system for building and packaging Haskell libraries and programs"
-  , ".SH SYNOPSIS"
-  , ".B " ++ pname
-  , ".I command"
-  , ".RI < arguments |[ options ]>..."
-  , ""
-  , "Where the"
-  , ".I commands"
-  , "are"
-  , ""
-  ] ++
-  concatMap commandSynopsisLines commands ++
-  [ ".SH DESCRIPTION"
-  , "Cabal is the standard package system for Haskell software. It helps people to configure, " 
-  , "build and install Haskell software and to distribute it easily to other users and developers."
-  , ""
-  , "The command line " ++ pname ++ " tool (also referred to as cabal-install) helps with "
-  , "installing existing packages and also helps people developing their own packages. "
-  , "It can be used to work with local packages or to install packages from online package archives, "
-  , "including automatically installing dependencies. By default it is configured to use Hackage, "
-  , "which is Haskell’s central package archive that contains thousands of libraries and applications "
-  , "in the Cabal package format."
-  , ".SH OPTIONS"
-  , "TODO"
-  , ".SH COMMANDS"
-  ] ++
-  concatMap commandDetailsLines commands ++
-  [ ".SH BUGS"
-  , "TODO"
-  , ".SH SEE ALSO"
-  , "TODO"
-  , ".SH LICENSE"
-  , "TODO"
-  ]
-  where
-    commandSynopsisLines (CommandSpec ui _ Visible) =
-      [ ".B " ++ pname ++ " " ++ (commandName ui)
-      , ".R - " ++ commandSynopsis ui
-      , ".br"
-      ]
-    commandSynopsisLines (CommandSpec _ _ Hidden) = []
-    commandDetailsLines (CommandSpec ui _ Visible) =
-      [ ".B " ++ pname ++ " " ++ (commandName ui)
-      , "TODO"
-      ]
-    commandDetailsLines (CommandSpec _ _ Hidden) = []
