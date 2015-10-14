@@ -19,8 +19,10 @@ module Distribution.Client.Manpage
   ) where
 
 import Distribution.Simple.Command
+import Distribution.Client.Setup (globalCommand)
 
 import Data.Char (toUpper)
+import Data.List (intercalate)
 
 data CommandVisibility = Visible | Hidden
 
@@ -45,7 +47,7 @@ manpage pname commands = unlines $
   , "are"
   , ""
   ] ++
-  concatMap commandSynopsisLines commands ++
+  concatMap (commandSynopsisLines pname) commands ++
   [ ".SH DESCRIPTION"
   , "Cabal is the standard package system for Haskell software. It helps people to configure, " 
   , "build and install Haskell software and to distribute it easily to other users and developers."
@@ -57,11 +59,16 @@ manpage pname commands = unlines $
   , "which is Haskell’s central package archive that contains thousands of libraries and applications "
   , "in the Cabal package format."
   , ".SH OPTIONS"
-  , "TODO"
-  , ".SH COMMANDS"
+  , "Global options:"
+  , ""
   ] ++
-  concatMap commandDetailsLines commands ++
-  [ ".SH BUGS"
+  concatMap optionLines globalCommandOptions ++
+  [ ".SH COMMANDS"
+  ] ++
+  concatMap (commandDetailsLines pname) commands ++
+  [ ".SH FILES"
+  , "TODO: .cabal/config"
+  , ".SH BUGS"
   , "TODO"
   , ".SH SEE ALSO"
   , "TODO"
@@ -69,14 +76,58 @@ manpage pname commands = unlines $
   , "TODO"
   ]
   where
-    commandSynopsisLines (CommandSpec ui _ Visible) =
-      [ ".B " ++ pname ++ " " ++ (commandName ui)
-      , ".R - " ++ commandSynopsis ui
-      , ".br"
-      ]
-    commandSynopsisLines (CommandSpec _ _ Hidden) = []
-    commandDetailsLines (CommandSpec ui _ Visible) =
-      [ ".B " ++ pname ++ " " ++ (commandName ui)
-      , "TODO"
-      ]
-    commandDetailsLines (CommandSpec _ _ Hidden) = []
+    globalCommandOptions = concatMap optionDescr (commandOptions (globalCommand []) ParseArgs)
+
+commandSynopsisLines :: String -> CommandSpec action -> [String]
+commandSynopsisLines pname (CommandSpec ui _ Visible) =
+  [ ".B " ++ pname ++ " " ++ (commandName ui)
+  , ".R - " ++ commandSynopsis ui
+  , ".br"
+  ]
+commandSynopsisLines _ (CommandSpec _ _ Hidden) = []
+
+commandDetailsLines :: String -> CommandSpec action -> [String]
+commandDetailsLines pname (CommandSpec ui _ Visible) =
+  [ ".B " ++ pname ++ " " ++ (commandName ui)
+  , "TODO"
+  , ""
+  ]
+commandDetailsLines _ (CommandSpec _ _ Hidden) = []
+
+data ArgumentRequired = Optional | Required
+type OptionArg = (ArgumentRequired, ArgPlaceHolder)  
+
+optionLines :: OptDescr flags -> [String]
+optionLines (ReqArg description (optionChars, optionStrings) placeHolder _ _) = 
+  standardOptionLines description optionChars optionStrings (Required, placeHolder)
+optionLines (OptArg description (optionChars, optionStrings) placeHolder _ _ _) =
+  standardOptionLines description optionChars optionStrings (Optional, placeHolder)
+optionLines (ChoiceOpt _) =
+  [ "TODO: choice options"
+  , ""
+  ]
+optionLines (BoolOpt description _ _ _ _) =
+  [ "TODO: boolean options"
+  , ""
+  ]
+
+standardOptionLines :: String -> [Char] -> [String] -> OptionArg -> [String]
+standardOptionLines description optionChars optionStrings arg =
+  [ intercalate " or " (shortOptions optionChars ++ longOptions optionStrings) 
+  ] ++
+  optionArg arg ++
+  [ ".RS"
+  , description
+  , ".RE"
+  , ""
+  ]
+
+shortOptions :: [Char] -> [String]
+shortOptions = map (\c -> "\\-" ++ [c])
+
+longOptions :: [String] -> [String]
+longOptions = map (\s -> "\\-\\-" ++ s)
+
+optionArg :: OptionArg -> [String]
+optionArg (Required, placeHolder) = [ ".I " ++ placeHolder ]
+optionArg (Optional, placeHolder) = [ ".RI [ " ++ placeHolder ++ " ]" ]
