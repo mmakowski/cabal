@@ -62,7 +62,7 @@ manpage pname commands = unlines $
   , "Global options:"
   , ""
   ] ++
-  concatMap optionLines globalCommandOptions ++
+  optionsLines (globalCommand []) ++
   [ ".SH COMMANDS"
   ] ++
   concatMap (commandDetailsLines pname) commands ++
@@ -75,8 +75,6 @@ manpage pname commands = unlines $
   , ".SH LICENSE"
   , "TODO"
   ]
-  where
-    globalCommandOptions = concatMap optionDescr (commandOptions (globalCommand []) ParseArgs)
 
 commandSynopsisLines :: String -> CommandSpec action -> [String]
 commandSynopsisLines pname (CommandSpec ui _ Visible) =
@@ -88,11 +86,29 @@ commandSynopsisLines _ (CommandSpec _ _ Hidden) = []
 
 commandDetailsLines :: String -> CommandSpec action -> [String]
 commandDetailsLines pname (CommandSpec ui _ Visible) =
-  [ ".B " ++ pname ++ " " ++ (commandName ui)
-  , "TODO"
+  [ ".B " ++ pname ++ " " ++ (commandName ui) 
   , ""
+  , commandUsage ui pname
+  , ""
+  ] ++
+  optional commandDescription ++
+  optional commandNotes ++
+  [ "Flags:"
+  , ".RS"
+  ] ++
+  optionsLines ui ++
+  [ ".RE"
+  , "" 
   ]
+  where
+    optional field =
+      case field ui of
+        Just text -> [text pname, ""]
+        Nothing   -> []
 commandDetailsLines _ (CommandSpec _ _ Hidden) = []
+
+optionsLines :: CommandUI flags -> [String]
+optionsLines command = concatMap optionLines (concatMap optionDescr (commandOptions command ParseArgs))
 
 data ArgumentRequired = Optional | Required
 type OptionArg = (ArgumentRequired, ArgPlaceHolder)  
