@@ -102,25 +102,32 @@ optionLines (ReqArg description (optionChars, optionStrings) placeHolder _ _) =
   standardOptionLines description optionChars optionStrings (Required, placeHolder)
 optionLines (OptArg description (optionChars, optionStrings) placeHolder _ _ _) =
   standardOptionLines description optionChars optionStrings (Optional, placeHolder)
+optionLines (BoolOpt description (trueChars, trueStrings) _ _ _) =
+  [ optionsLine trueChars trueStrings ] ++
+  optionDescriptionLines description
 optionLines (ChoiceOpt _) =
   [ "TODO: choice options"
-  , ""
-  ]
-optionLines (BoolOpt description _ _ _ _) =
-  [ "TODO: boolean options"
   , ""
   ]
 
 standardOptionLines :: String -> [Char] -> [String] -> OptionArg -> [String]
 standardOptionLines description optionChars optionStrings arg =
-  [ intercalate " or " (shortOptions optionChars ++ longOptions optionStrings) 
+  [ optionsLine optionChars optionStrings
+  , optionArgLine arg
   ] ++
-  optionArg arg ++
+  optionDescriptionLines description
+
+optionDescriptionLines :: String -> [String]
+optionDescriptionLines description =
   [ ".RS"
   , description
   , ".RE"
   , ""
   ]
+
+optionsLine :: [Char] -> [String] -> String
+optionsLine optionChars optionStrings =
+  intercalate ", " (shortOptions optionChars ++ longOptions optionStrings)
 
 shortOptions :: [Char] -> [String]
 shortOptions = map (\c -> "\\-" ++ [c])
@@ -128,6 +135,6 @@ shortOptions = map (\c -> "\\-" ++ [c])
 longOptions :: [String] -> [String]
 longOptions = map (\s -> "\\-\\-" ++ s)
 
-optionArg :: OptionArg -> [String]
-optionArg (Required, placeHolder) = [ ".I " ++ placeHolder ]
-optionArg (Optional, placeHolder) = [ ".RI [ " ++ placeHolder ++ " ]" ]
+optionArgLine :: OptionArg -> String
+optionArgLine (Required, placeHolder) = ".I " ++ placeHolder
+optionArgLine (Optional, placeHolder) = ".RI [ " ++ placeHolder ++ " ]"
