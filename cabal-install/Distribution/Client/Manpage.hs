@@ -121,10 +121,12 @@ optionLines (OptArg description (optionChars, optionStrings) placeHolder _ _ _) 
 optionLines (BoolOpt description (trueChars, trueStrings) _ _ _) =
   [ optionsLine trueChars trueStrings ] ++
   optionDescriptionLines description
-optionLines (ChoiceOpt _) =
-  [ "TODO: choice options"
-  , ""
-  ]
+optionLines (ChoiceOpt options) =
+  concatMap choiceLines options
+  where
+    choiceLines (description, (optionChars, optionStrings), _, _) =
+      [ optionsLine optionChars optionStrings ] ++
+      optionDescriptionLines description
 
 standardOptionLines :: String -> [Char] -> [String] -> OptionArg -> [String]
 standardOptionLines description optionChars optionStrings arg =
