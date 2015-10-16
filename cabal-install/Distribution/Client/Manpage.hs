@@ -32,6 +32,14 @@ data CommandSpec action = forall flags. CommandSpec (CommandUI flags) (CommandUI
 commandFromSpec :: CommandSpec a -> Command a
 commandFromSpec (CommandSpec ui action _) = action ui
 
+data FileInfo = FileInfo String String -- ^ path, description
+
+files :: [FileInfo]
+files =
+  [ (FileInfo "~/.cabal/config" "The defaults that can be overridden with command-line options.")
+  , (FileInfo "~/.cabal/world"  "A list of all packages whose installation has been explicitly requested.")
+  ]
+
 manpage :: String -> [CommandSpec a] -> String
 manpage pname commands = unlines $
   [ ".TH " ++ map toUpper pname ++ " 1"
@@ -67,13 +75,11 @@ manpage pname commands = unlines $
   ] ++
   concatMap (commandDetailsLines pname) commands ++
   [ ".SH FILES"
-  , "TODO: .cabal/config"
-  , ".SH BUGS"
-  , "TODO"
-  , ".SH SEE ALSO"
-  , "TODO"
-  , ".SH LICENSE"
-  , "TODO"
+  ] ++
+  concatMap fileLines files ++
+  [ ".SH BUGS"
+  , "To browse the list of known issues or report a new one please see "
+  , "https://github.com/haskell/cabal/labels/cabal-install."
   ]
 
 commandSynopsisLines :: String -> CommandSpec action -> [String]
@@ -115,11 +121,12 @@ type OptionArg = (ArgumentRequired, ArgPlaceHolder)
 
 optionLines :: OptDescr flags -> [String]
 optionLines (ReqArg description (optionChars, optionStrings) placeHolder _ _) = 
-  standardOptionLines description optionChars optionStrings (Required, placeHolder)
+  argOptionLines description optionChars optionStrings (Required, placeHolder)
 optionLines (OptArg description (optionChars, optionStrings) placeHolder _ _ _) =
-  standardOptionLines description optionChars optionStrings (Optional, placeHolder)
-optionLines (BoolOpt description (trueChars, trueStrings) _ _ _) =
-  [ optionsLine trueChars trueStrings ] ++
+  argOptionLines description optionChars optionStrings (Optional, placeHolder)
+optionLines (BoolOpt description (trueChars, trueStrings) (falseChars, falseStrings) _ _) =
+  optionLinesIfPresent trueChars trueStrings ++
+  optionLinesIfPresent falseChars falseStrings ++
   optionDescriptionLines description
 optionLines (ChoiceOpt options) =
   concatMap choiceLines options
@@ -128,12 +135,17 @@ optionLines (ChoiceOpt options) =
       [ optionsLine optionChars optionStrings ] ++
       optionDescriptionLines description
 
-standardOptionLines :: String -> [Char] -> [String] -> OptionArg -> [String]
-standardOptionLines description optionChars optionStrings arg =
+argOptionLines :: String -> [Char] -> [String] -> OptionArg -> [String]
+argOptionLines description optionChars optionStrings arg =
   [ optionsLine optionChars optionStrings
   , optionArgLine arg
   ] ++
   optionDescriptionLines description
+
+optionLinesIfPresent :: [Char] -> [String] -> [String]
+optionLinesIfPresent optionChars optionStrings =
+  if null optionChars && null optionStrings then []
+  else                                           [ optionsLine optionChars optionStrings, ".br" ]
 
 optionDescriptionLines :: String -> [String]
 optionDescriptionLines description =
@@ -156,3 +168,12 @@ longOptions = map (\s -> "\\-\\-" ++ s)
 optionArgLine :: OptionArg -> String
 optionArgLine (Required, placeHolder) = ".I " ++ placeHolder
 optionArgLine (Optional, placeHolder) = ".RI [ " ++ placeHolder ++ " ]"
+
+fileLines :: FileInfo -> [String]
+fileLines (FileInfo path description) =
+  [ path
+  , ".RS"
+  , description
+  , ".RE"
+  , ""
+  ]
