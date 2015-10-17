@@ -28,22 +28,9 @@ import System.IO ( openFile
 import System.Process ( runProcess )
 import System.FilePath ( (</>) )
 
--- non-portable:
-import System.Posix.Files ( groupReadMode
-                          , otherReadMode
-                          , ownerReadMode
-                          , ownerWriteMode
-                          , setFileMode
-                          , unionFileModes
-                          )
-import System.Posix.Types ( FileMode )
-
 
 main :: IO ()
-main = defaultMainWithHooks $ hooks
-
-hooks :: UserHooks
-hooks = simpleUserHooks
+main = defaultMainWithHooks $ simpleUserHooks
   { postBuild = \ _ flags _ lbi ->
       buildManpage lbi (fromFlag $ buildVerbosity flags)
   , postCopy = \ _ flags pkg lbi ->
@@ -57,7 +44,7 @@ buildManpage lbi verbosity = do
   let cabal = buildDir lbi </> "cabal/cabal"
       manpage = buildDir lbi </> "cabal/cabal.1"
   manpageHandle <- openFile manpage WriteMode
-  notice verbosity ("Generating manual page at " ++ manpage ++ " ...")
+  notice verbosity ("Generating manual page " ++ manpage ++ " ...")
   runProcess cabal ["manpage"] Nothing Nothing Nothing (Just manpageHandle) Nothing
   return ()
 
@@ -65,10 +52,3 @@ installManpage :: PackageDescription -> LocalBuildInfo -> Verbosity -> CopyDest 
 installManpage pkg lbi verbosity copy = do
   let destDir = mandir (absoluteInstallDirs pkg lbi copy) </> "man1"
   copyFiles verbosity destDir [(buildDir lbi </> "cabal", "cabal.1")]
-  setFileMode (destDir </> "cabal.1") mode644
-
-mode644 :: FileMode
-mode644 = ownerReadMode  `unionFileModes`
-          ownerWriteMode `unionFileModes`
-          groupReadMode  `unionFileModes`
-          otherReadMode
