@@ -27,7 +27,6 @@ tests paths =
       outputLines `assertContains` ".B cabal install"
       -- hidden commands are not included:
       outputLines `assertDoesNotContain` ".B cabal manpage"
-      -- TODO: expected output other lines
   ]
 
 assertContains :: (Eq a, Show a) => [a] -> a -> Assertion

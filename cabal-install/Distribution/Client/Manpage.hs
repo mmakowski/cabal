@@ -6,15 +6,17 @@
 -- License     :  BSD-like
 --
 -- Maintainer  :  cabal-devel@haskell.org
--- Stability   :  TODO MM: provisional?
--- Portability :  TODO MM: portable?
+-- Stability   :  provisional
+-- Portability :  non-portable (ExistentialQuantification)
 --
--- Supporting functions for building the manual page.
+-- Functions and types for building the manual page.
 
 module Distribution.Client.Manpage
-  ( CommandVisibility (..)
+  ( -- * Command list
+    CommandVisibility (..)
   , CommandSpec (..)
   , commandFromSpec
+    -- * Manual page generation
   , manpage
   ) where
 
@@ -26,20 +28,26 @@ import Data.List (intercalate)
 
 data CommandVisibility = Visible | Hidden
 
--- TODO MM: docs
-data CommandSpec action = forall flags. CommandSpec (CommandUI flags) (CommandUI flags -> Command action) CommandVisibility
+-- | wraps a @CommandUI@ together with a function that turns it into a @Command@.
+-- By hiding the type of flags for the UI allows construction of a list of all UIs at the
+-- top level of the program. That list can then be used for generation of manual page
+-- as well as for executing the selected command.
+data CommandSpec action
+  = forall flags. CommandSpec (CommandUI flags) (CommandUI flags -> Command action) CommandVisibility
 
 commandFromSpec :: CommandSpec a -> Command a
 commandFromSpec (CommandSpec ui action _) = action ui
 
 data FileInfo = FileInfo String String -- ^ path, description
 
+-- | A list of files that should be documented in the manual page.
 files :: [FileInfo]
 files =
   [ (FileInfo "~/.cabal/config" "The defaults that can be overridden with command-line options.")
   , (FileInfo "~/.cabal/world"  "A list of all packages whose installation has been explicitly requested.")
   ]
 
+-- | Produces a manual page with @troff@ markup.
 manpage :: String -> [CommandSpec a] -> String
 manpage pname commands = unlines $
   [ ".TH " ++ map toUpper pname ++ " 1"
@@ -61,7 +69,7 @@ manpage pname commands = unlines $
   , "build and install Haskell software and to distribute it easily to other users and developers."
   , ""
   , "The command line " ++ pname ++ " tool (also referred to as cabal-install) helps with "
-  , "installing existing packages and also helps people developing their own packages. "
+  , "installing existing packages and developing new packages. "
   , "It can be used to work with local packages or to install packages from online package archives, "
   , "including automatically installing dependencies. By default it is configured to use Hackage, "
   , "which is Haskell’s central package archive that contains thousands of libraries and applications "
