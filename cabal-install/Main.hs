@@ -101,6 +101,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,updateInstallDirs
 
                                               ,configCompilerAux'
+                                              ,getPersistOrConfigCompiler
                                               ,configPackageDB')
 import Distribution.Client.Sandbox.PackageEnvironment
                                               (setPackageDB
@@ -1166,7 +1167,7 @@ execAction execFlags extraArgs globalFlags = do
   let verbosity = fromFlag (execVerbosity execFlags)
   (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
   let configFlags = savedConfigureFlags config
-  (comp, platform, conf) <- configCompilerAux' configFlags
+  (comp, platform, conf) <- getPersistOrConfigCompiler configFlags
   exec verbosity useSandbox comp platform conf extraArgs
 
 userConfigAction :: UserConfigFlags -> [String] -> Action
