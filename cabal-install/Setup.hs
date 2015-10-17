@@ -22,6 +22,14 @@ import Distribution.Verbosity ( Verbosity )
 import System.IO ( openFile
                  , IOMode (WriteMode)
                  )
+import System.Posix.Files ( groupReadMode
+                          , otherReadMode
+                          , ownerReadMode
+                          , ownerWriteMode
+                          , setFileMode
+                          , unionFileModes
+                          )
+import System.Posix.Types ( FileMode )
 import System.Process ( runProcess )
 import System.FilePath ( (</>) )
 
@@ -45,7 +53,13 @@ buildManpage lbi = do
   return ()
 
 installManpage :: PackageDescription -> LocalBuildInfo -> Verbosity -> CopyDest -> IO ()
-installManpage pkg lbi verbosity copy =
-    copyFiles verbosity
-              (mandir (absoluteInstallDirs pkg lbi copy) </> "man1")
-              [(buildDir lbi </> "cabal", "cabal.1")]
+installManpage pkg lbi verbosity copy = do
+  let destDir = mandir (absoluteInstallDirs pkg lbi copy) </> "man1"
+  copyFiles verbosity destDir [(buildDir lbi </> "cabal", "cabal.1")]
+  setFileMode (destDir </> "cabal.1") mode644
+
+mode644 :: FileMode
+mode644 = ownerReadMode  `unionFileModes`
+          ownerWriteMode `unionFileModes`
+          groupReadMode  `unionFileModes`
+          otherReadMode
