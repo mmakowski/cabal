@@ -277,9 +277,8 @@ regularCmd :: CommandUI flags -> (flags -> [String] -> action) -> CommandSpec ac
 regularCmd ui action = CommandSpec ui ((flip commandAddAction) action) Visible
 hiddenCmd :: CommandUI flags -> (flags -> [String] -> action) -> CommandSpec action
 hiddenCmd ui action = CommandSpec ui (\ui' -> hiddenCommand (commandAddAction ui' action)) Hidden
-wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Flag Verbosity) -> (flags -> Flag String) -> CommandSpec Action -- TODO MM: better name
+wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Flag Verbosity) -> (flags -> Flag String) -> CommandSpec Action
 wrapperCmd ui verbosity distPref = CommandSpec ui (\ui' -> wrapperAction ui' verbosity distPref) Visible
-
 
 wrapperAction :: Monoid flags
               => CommandUI flags
